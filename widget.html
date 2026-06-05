@@ -4,10 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>AI Draft Assistant</title>
-
-  <!-- Zoho Desk Client SDK -->
   <script src="https://js.zohostatic.com/support/developer_sdk/v1/js/ZohoDeskClientSDK.min.js"></script>
-
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -31,7 +28,6 @@
       color: #60a5fa;
       border: 1px solid #2d5a8e;
     }
-
     #status-bar.success { background: #14532d; color: #4ade80; border-color: #166534; }
     #status-bar.error   { background: #450a0a; color: #f87171; border-color: #7f1d1d; }
     #status-bar.working { background: #3d2e00; color: #fbbf24; border-color: #78550a; }
@@ -50,7 +46,6 @@
       padding: 14px;
       margin-bottom: 10px;
     }
-
     #api-key-section label {
       display: block;
       font-weight: 600;
@@ -58,7 +53,6 @@
       font-size: 12px;
       color: #94a3b8;
     }
-
     #api-key-section input {
       width: 100%;
       padding: 7px 10px;
@@ -70,11 +64,7 @@
       background: #1a1d23;
       color: #e2e8f0;
     }
-
-    #api-key-section input:focus {
-      outline: none;
-      border-color: #60a5fa;
-    }
+    #api-key-section input:focus { outline: none; border-color: #60a5fa; }
 
     button {
       padding: 7px 14px;
@@ -85,12 +75,21 @@
       cursor: pointer;
       transition: background 0.15s;
     }
-
-    #save-key-btn {
-      background: #2563eb;
-      color: white;
-    }
+    #save-key-btn { background: #2563eb; color: white; }
     #save-key-btn:hover { background: #1d4ed8; }
+
+    #waiting-msg {
+      text-align: center;
+      color: #64748b;
+      font-size: 12px;
+      padding: 20px 0;
+    }
+    #trigger-hint {
+      font-size: 11px;
+      color: #475569;
+      text-align: center;
+      margin-top: 6px;
+    }
 
     #draft-section {
       background: #242830;
@@ -99,62 +98,35 @@
       padding: 14px;
       display: none;
     }
-
     #draft-section h3 {
       font-size: 13px;
       font-weight: 700;
       margin-bottom: 10px;
       color: #e2e8f0;
     }
-
-    #draft-text {
+    #draft-preview {
       width: 100%;
-      min-height: 140px;
+      min-height: 120px;
       padding: 10px;
       border: 1px solid #353b47;
       border-radius: 5px;
       font-size: 12px;
       line-height: 1.6;
-      resize: vertical;
-      font-family: inherit;
       background: #1a1d23;
-      color: #e2e8f0;
+      color: #94a3b8;
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin-bottom: 10px;
     }
-
-    #draft-text:focus { outline: none; border-color: #60a5fa; }
-
     .button-row {
       display: flex;
       gap: 8px;
-      margin-top: 10px;
       justify-content: flex-end;
     }
-
-    #post-note-btn {
-      background: #15803d;
-      color: white;
-    }
-    #post-note-btn:hover { background: #166534; }
-
-    #discard-btn {
-      background: #2d3748;
-      color: #94a3b8;
-    }
+    #send-to-reply-btn { background: #15803d; color: white; }
+    #send-to-reply-btn:hover { background: #166534; }
+    #discard-btn { background: #2d3748; color: #94a3b8; }
     #discard-btn:hover { background: #374151; }
-
-    #waiting-msg {
-      text-align: center;
-      color: #64748b;
-      font-size: 12px;
-      padding: 20px 0;
-    }
-
-    #trigger-hint {
-      font-size: 11px;
-      color: #475569;
-      text-align: center;
-      margin-top: 6px;
-    }
 
     .spinner {
       display: inline-block;
@@ -170,53 +142,45 @@
 </head>
 <body>
 
-  <!-- Status Bar -->
   <div id="status-bar">
     <div class="dot"></div>
-    <span id="status-text">Initialising...</span>
+    <span>Initialising...</span>
   </div>
 
-  <!-- API Key Setup -->
   <div id="api-key-section">
     <label for="api-key-input">Gemini API Key</label>
     <input type="password" id="api-key-input" placeholder="AIza..." autocomplete="off" />
     <button id="save-key-btn">Save Key</button>
   </div>
 
-  <!-- Waiting state -->
   <div id="waiting-msg">
     Listening for <strong>/fixed</strong> comment...
     <div id="trigger-hint">Type <code>/fixed your note here</code> in a ticket comment</div>
   </div>
 
-  <!-- Draft output -->
   <div id="draft-section">
-    <h3>✦ AI Draft Reply</h3>
-    <textarea id="draft-text" placeholder="Generating..."></textarea>
+    <h3>✦ AI Draft Ready</h3>
+    <div id="draft-preview"></div>
     <div class="button-row">
       <button id="discard-btn">Discard</button>
-      <button id="post-note-btn">Post as Private Note</button>
+      <button id="send-to-reply-btn">Load into Reply Box</button>
     </div>
   </div>
 
   <script>
-    // ─── State ───────────────────────────────────────────────────────────────
     let App;
-    let currentTicketId = null;
-    let storedApiKey = localStorage.getItem("anthropic_api_key") || "";
+    let currentDraft = "";
 
-    // ─── DOM refs ─────────────────────────────────────────────────────────────
-    const statusBar    = document.getElementById("status-bar");
-    const statusText   = document.getElementById("status-text");
-    const apiKeyInput  = document.getElementById("api-key-input");
-    const saveKeyBtn   = document.getElementById("save-key-btn");
-    const waitingMsg   = document.getElementById("waiting-msg");
-    const draftSection = document.getElementById("draft-section");
-    const draftText    = document.getElementById("draft-text");
-    const postNoteBtn  = document.getElementById("post-note-btn");
-    const discardBtn   = document.getElementById("discard-btn");
+    const statusBar      = document.getElementById("status-bar");
+    const apiKeyInput    = document.getElementById("api-key-input");
+    const saveKeyBtn     = document.getElementById("save-key-btn");
+    const waitingMsg     = document.getElementById("waiting-msg");
+    const draftSection   = document.getElementById("draft-section");
+    const draftPreview   = document.getElementById("draft-preview");
+    const sendToReplyBtn = document.getElementById("send-to-reply-btn");
+    const discardBtn     = document.getElementById("discard-btn");
 
-    // ─── Helpers ──────────────────────────────────────────────────────────────
+    // ─── Status helper ────────────────────────────────────────────────────────
     function setStatus(msg, type = "info") {
       statusBar.className = type;
       const icon = type === "working"
@@ -225,66 +189,48 @@
       statusBar.innerHTML = icon + `<span>${msg}</span>`;
     }
 
+    // ─── UI states ────────────────────────────────────────────────────────────
     function showDraft(text) {
+      currentDraft = text;
+      draftPreview.textContent = text;
       waitingMsg.style.display   = "none";
       draftSection.style.display = "block";
-      draftText.value = text;
     }
 
     function resetToWaiting() {
+      currentDraft = "";
       draftSection.style.display = "none";
       waitingMsg.style.display   = "block";
       setStatus("Listening for /fixed comment...", "info");
     }
 
     // ─── API Key ──────────────────────────────────────────────────────────────
-    if (storedApiKey) {
+    if (localStorage.getItem("gemini_api_key")) {
       apiKeyInput.value = "••••••••••••••••";
     }
 
     saveKeyBtn.addEventListener("click", () => {
       const val = apiKeyInput.value.trim();
       if (!val || val.startsWith("•")) return;
-      localStorage.setItem("anthropic_api_key", val);
-      storedApiKey = val;
+      localStorage.setItem("gemini_api_key", val);
       apiKeyInput.value = "••••••••••••••••";
       setStatus("API key saved ✓", "success");
       setTimeout(() => setStatus("Listening for /fixed comment...", "info"), 2000);
     });
 
-    // ─── Post private note back to Zoho ──────────────────────────────────────
-    async function postPrivateNote(ticketId, noteContent) {
-      try {
-        // Use the Zoho Desk REST API via the SDK's request proxy
-        // This avoids CORS and handles auth automatically
-        const response = await ZOHODESK.request({
-          url: `https://desk.zoho.com/api/v1/tickets/${ticketId}/comments`,
-          type: "POST",
-          headers: { "Content-Type": "application/json" },
-          data: JSON.stringify({
-            content: noteContent,
-            isPublic: false
-          })
-        });
-        return { ok: true };
-      } catch (err) {
-        return { ok: false, error: err };
-      }
-    }
-
-    // ─── Gemini API call ──────────────────────────────────────────────────────
-    async function generateDraft(ticketSubject, ticketDescription, agentComment, firstName) {
-      const apiKey = localStorage.getItem("anthropic_api_key");
-      if (!apiKey) throw new Error("No API key saved.");
+    // ─── Gemini API ───────────────────────────────────────────────────────────
+    async function generateDraft(subject, description, agentNote, firstName) {
+      const apiKey = localStorage.getItem("gemini_api_key");
+      if (!apiKey) throw new Error("No API key saved. Enter your Gemini key above.");
 
       const greeting = firstName ? `Hi ${firstName},` : "Hi there,";
-      const prompt = `Write a single customer-facing email reply body. No subject line, no metadata, no explanation, no multiple drafts, no thinking. Just the email body itself, ready to send.
+      const prompt = `Write a single customer-facing email reply body. No subject line, no metadata, no explanation, no multiple drafts. Just the email body itself, ready to send.
 
-Always start the email with exactly this greeting on its own line: ${greeting}
+Start with exactly this greeting on its own line: ${greeting}
 
-Ticket subject: ${ticketSubject}
-Ticket description: ${ticketDescription}
-Agent note: ${agentComment}
+Ticket subject: ${subject}
+Ticket description: ${description}
+Agent note: ${agentNote}
 
 Requirements: professional, friendly, concise. Confirm the issue is resolved. One draft only.`;
 
@@ -309,51 +255,65 @@ Requirements: professional, friendly, concise. Confirm the issue is resolved. On
       return data.candidates[0].content.parts[0].text;
     }
 
-    // ─── Main: Zoho extension init ────────────────────────────────────────────
+    // ─── Load draft into reply box ────────────────────────────────────────────
+    async function loadIntoReplyBox(draft) {
+      try {
+        // Convert plain text newlines to <br> for the HTML editor
+        const htmlContent = draft
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/\n/g, "<br>");
+
+        await ZOHODESK.set("replyEditor.content", { content: htmlContent });
+        return true;
+      } catch (err) {
+        console.error("replyEditor.content failed:", err);
+        // Fallback: try alternative key
+        try {
+          await ZOHODESK.set("ticket.replyEditor", { content: draft });
+          return true;
+        } catch (err2) {
+          console.error("ticket.replyEditor also failed:", err2);
+          return false;
+        }
+      }
+    }
+
+    // ─── Main init ────────────────────────────────────────────────────────────
     window.onload = function () {
       ZOHODESK.extension.onload().then(async function (app) {
         App = app;
         setStatus("Listening for /fixed comment...", "info");
 
-        // Get current ticket ID
-        try {
-          const ticketRes = await ZOHODESK.get("ticket.id");
-          currentTicketId = ticketRes["ticket.id"];
-        } catch (e) {
-          setStatus("Could not read ticket ID", "error");
-        }
-
-        // ── Listen for new comments ──────────────────────────────────────────
+        // ── Listen for /fixed comment ────────────────────────────────────────
         App.instance.on("ticket_comment.add", async function (data) {
           const rawComment = data.comment || "";
 
-          // Strip HTML tags to get plain text
+          // Strip HTML to plain text
           const tmp = document.createElement("div");
           tmp.innerHTML = rawComment;
-          const commentText = tmp.textContent || tmp.innerText || "";
+          const commentText = (tmp.textContent || tmp.innerText || "").trim();
 
-          // Check for /fixed trigger
-          if (!commentText.trim().toLowerCase().startsWith("/fixed")) return;
+          if (!commentText.toLowerCase().startsWith("/fixed")) return;
 
-          // Extract the note after /fixed
           const agentNote = commentText.replace(/^\/fixed\s*/i, "").trim()
             || "Issue has been resolved.";
 
-          setStatus("Generating draft with Gemini...", "working");
+          setStatus("Generating draft...", "working");
 
           try {
-            // Fetch ticket details
             const [subjectRes, descRes, ticketRes] = await Promise.all([
               ZOHODESK.get("ticket.subject"),
               ZOHODESK.get("ticket.description"),
               ZOHODESK.get("ticket")
             ]);
 
-            const subject     = subjectRes["ticket.subject"]     || "(no subject)";
-            const description = descRes["ticket.description"]    || "(no description)";
-            const ticket      = ticketRes["ticket"]              || {};
-            const fullName    = ticket.contactName                || "";
-            const firstName   = fullName.split(" ")[0];
+            const subject     = subjectRes["ticket.subject"]  || "(no subject)";
+            const description = descRes["ticket.description"] || "(no description)";
+            const ticket      = ticketRes["ticket"]           || {};
+            const fullName    = ticket.contactName            || "";
+            const firstName   = fullName.split(" ")[0]        || "";
 
             const draft = await generateDraft(subject, description, agentNote, firstName);
             showDraft(draft);
@@ -364,31 +324,24 @@ Requirements: professional, friendly, concise. Confirm the issue is resolved. On
           }
         });
 
-        // ── Post note button ─────────────────────────────────────────────────
-        postNoteBtn.addEventListener("click", async () => {
-          if (!currentTicketId) {
-            setStatus("No ticket ID found", "error");
-            return;
-          }
+        // ── Load into reply box ──────────────────────────────────────────────
+        sendToReplyBtn.addEventListener("click", async () => {
+          if (!currentDraft) return;
+          setStatus("Loading into reply box...", "working");
+          sendToReplyBtn.disabled = true;
 
-          const noteContent = draftText.value.trim();
-          if (!noteContent) return;
+          const ok = await loadIntoReplyBox(currentDraft);
 
-          setStatus("Posting private note...", "working");
-          postNoteBtn.disabled = true;
-
-          const result = await postPrivateNote(currentTicketId, noteContent);
-
-          if (result.ok) {
-            setStatus("Private note posted ✓", "success");
-            setTimeout(resetToWaiting, 2500);
+          if (ok) {
+            setStatus("Loaded into reply box ✓", "success");
+            setTimeout(resetToWaiting, 2000);
           } else {
-            setStatus("Failed to post note. Copy it manually.", "error");
-            postNoteBtn.disabled = false;
+            setStatus("Could not load — copy manually", "error");
+            sendToReplyBtn.disabled = false;
           }
         });
 
-        // ── Discard button ───────────────────────────────────────────────────
+        // ── Discard ──────────────────────────────────────────────────────────
         discardBtn.addEventListener("click", resetToWaiting);
       });
     };
