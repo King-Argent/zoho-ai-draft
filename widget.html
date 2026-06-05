@@ -265,18 +265,14 @@ Requirements: professional, friendly, concise. Confirm the issue is resolved. On
           .replace(/>/g, "&gt;")
           .replace(/\n/g, "<br>");
 
-        await ZOHODESK.set("replyEditor.content", { content: htmlContent });
+        await ZOHODESK.invoke("INSERT", "ticket.replyEditor", {
+          value: htmlContent,
+          type: "replace"
+        });
         return true;
       } catch (err) {
-        console.error("replyEditor.content failed:", err);
-        // Fallback: try alternative key
-        try {
-          await ZOHODESK.set("ticket.replyEditor", { content: draft });
-          return true;
-        } catch (err2) {
-          console.error("ticket.replyEditor also failed:", err2);
-          return false;
-        }
+        console.error("ticket.replyEditor invoke failed:", err);
+        return false;
       }
     }
 
