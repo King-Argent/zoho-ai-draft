@@ -273,11 +273,14 @@
     }
 
     // ─── Gemini API call ──────────────────────────────────────────────────────
-    async function generateDraft(ticketSubject, ticketDescription, agentComment) {
+    async function generateDraft(ticketSubject, ticketDescription, agentComment, firstName) {
       const apiKey = localStorage.getItem("anthropic_api_key");
       if (!apiKey) throw new Error("No API key saved.");
 
+      const greeting = firstName ? `Hi ${firstName},` : "Hi there,";
       const prompt = `Write a single customer-facing email reply body. No subject line, no metadata, no explanation, no multiple drafts, no thinking. Just the email body itself, ready to send.
+
+Always start the email with exactly this greeting on its own line: ${greeting}
 
 Ticket subject: ${ticketSubject}
 Ticket description: ${ticketDescription}
@@ -340,15 +343,19 @@ Requirements: professional, friendly, concise. Confirm the issue is resolved. On
 
           try {
             // Fetch ticket details
-            const [subjectRes, descRes] = await Promise.all([
+            const [subjectRes, descRes, ticketRes] = await Promise.all([
               ZOHODESK.get("ticket.subject"),
-              ZOHODESK.get("ticket.description")
+              ZOHODESK.get("ticket.description"),
+              ZOHODESK.get("ticket")
             ]);
 
             const subject     = subjectRes["ticket.subject"]     || "(no subject)";
             const description = descRes["ticket.description"]    || "(no description)";
+            const ticket      = ticketRes["ticket"]              || {};
+            const contact     = ticket.contact                   || {};
+            const firstName   = contact.firstName                || "";
 
-            const draft = await generateDraft(subject, description, agentNote);
+            const draft = await generateDraft(subject, description, agentNote, firstName);
             showDraft(draft);
             setStatus("Draft ready — review below", "success");
 
