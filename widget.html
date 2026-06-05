@@ -353,7 +353,10 @@ Requirements: professional, friendly, concise. Confirm the issue is resolved. On
             const description = descRes["ticket.description"]    || "(no description)";
             const ticket      = ticketRes["ticket"]              || {};
             const contact     = ticket.contact                   || {};
-            const firstName   = contact.firstName                || "";
+            console.log("TICKET OBJECT:", JSON.stringify(ticket));
+            console.log("CONTACT OBJECT:", JSON.stringify(contact));
+            const fullName    = contact.firstName || contact.name || contact.contactName || "";
+            const firstName   = fullName.split(" ")[0];
 
             const draft = await generateDraft(subject, description, agentNote, firstName);
             showDraft(draft);
