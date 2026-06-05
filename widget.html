@@ -329,7 +329,13 @@ Requirements: professional, friendly, concise. Confirm the issue is resolved. On
 
             const draft = await generateDraft(subject, description, agentNote, firstName);
             showDraft(draft);
-            setStatus("Draft ready — review below", "success");
+            setStatus("Loading into reply box...", "working");
+            const ok = await loadIntoReplyBox(draft);
+            if (ok) {
+              setStatus("Draft loaded into reply box ✓", "success");
+            } else {
+              setStatus("Draft ready - click Load to add to reply box", "success");
+            }
 
           } catch (err) {
             setStatus("Error: " + err.message, "error");
