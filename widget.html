@@ -291,8 +291,7 @@ Requirements: professional, friendly, concise. Confirm the issue is resolved. On
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { thinkingConfig: { thinkingBudget: 0 } }
+            contents: [{ parts: [{ text: prompt }] }]
           })
         }
       );
