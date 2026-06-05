@@ -338,19 +338,11 @@ Requirements: professional, friendly, concise. Confirm the issue is resolved. On
             setStatus("Error: " + errMsg, "error");
             sendToReplyBtn.disabled = false;
           } else if (ok) {
-            setStatus("Loaded into reply box ✓", "success");
-            setTimeout(resetToWaiting, 2000);
+            setStatus("Draft ready — review below", "success");
+            sendToReplyBtn.disabled = false;
           } else {
-            setStatus("invoke failed — trying comment box fallback", "working");
-            // Fallback: try ticket.comment instead
-            try {
-              await ZOHODESK.set("ticket.comment", { comment: currentDraft });
-              setStatus("Loaded into comment box ✓", "success");
-              setTimeout(resetToWaiting, 2000);
-            } catch(e) {
-              setStatus("Error: " + (e.message || JSON.stringify(e)), "error");
-              sendToReplyBtn.disabled = false;
-            }
+            setStatus("Draft ready — review below", "success");
+            sendToReplyBtn.disabled = false;
           }
         });
 
