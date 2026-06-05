@@ -266,8 +266,8 @@ Requirements: professional, friendly, concise. Confirm the issue is resolved. On
           .replace(/\n/g, "<br>");
 
         await ZOHODESK.invoke("INSERT", "ticket.replyEditor", {
-          value: htmlContent,
-          type: "replace"
+          value: htmlContent + "<br><br>",
+          type: "append"
         });
         return true;
       } catch (err) {
