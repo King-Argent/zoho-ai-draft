@@ -242,14 +242,14 @@
 
       const greeting = firstName ? `Hi ${firstName},` : "Hi there,";
       const historySection = conversationHistory
-        ? `\nEmail thread history (most recent first):\n${conversationHistory}\n`
+        ? `\nEmail thread (use this as the PRIMARY source of what was requested and what was done):\n${conversationHistory}\n`
         : "";
       const prompt = `Write a customer-facing email reply body following this exact format and style. Output only the email body, nothing else.
 
 ${greeting}
 I hope you are well.
 
-[One or two sentences confirming what was done, written naturally and specifically based on the ticket and agent note. Use the email thread history for context if available.]
+[One or two sentences confirming everything that was requested and resolved. Base this primarily on the email thread history — cover ALL requests mentioned by the customer, not just the ticket title.]
 
 Please let me know if you need anything else,
 Thanks
@@ -353,7 +353,7 @@ Agent note: ${agentNote}${historySection}`;
                   conversationHistory = threads.map(t => {
                     const tmp2 = document.createElement("div");
                     tmp2.innerHTML = t.content || "";
-                    const plainText = (tmp2.textContent || tmp2.innerText || "").trim().substring(0, 500);
+                    const plainText = (tmp2.textContent || tmp2.innerText || "").trim().substring(0, 1500);
                     const direction = t.direction === "in" ? "Customer" : "Agent";
                     return `[${direction}]: ${plainText}`;
                   }).join("\n\n");
