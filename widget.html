@@ -342,23 +342,28 @@ Agent note: ${agentNote}${historySection}`;
             let conversationHistory = "";
             if (ticketId) {
               try {
+                setStatus("Fetching email thread...", "working");
                 const convRes = await ZOHODESK.request({
                   url: `https://desk.zoho.eu/api/v1/tickets/${ticketId}/conversations?limit=10`,
                   type: "GET",
                   headers: { "Content-Type": "application/json" }
                 });
-                const convData = JSON.parse(convRes.response || "{}");
+                // ZOHODESK.request returns the body as a string in convRes.response
+                const raw = typeof convRes === "string" ? convRes : (convRes.response || JSON.stringify(convRes));
+                const convData = JSON.parse(raw);
                 const threads = convData.data || [];
                 if (threads.length > 0) {
                   conversationHistory = threads.map(t => {
                     const tmp2 = document.createElement("div");
-                    tmp2.innerHTML = t.content || "";
+                    tmp2.innerHTML = t.content || t.body || "";
                     const plainText = (tmp2.textContent || tmp2.innerText || "").trim().substring(0, 1500);
                     const direction = t.direction === "in" ? "Customer" : "Agent";
                     return `[${direction}]: ${plainText}`;
                   }).join("\n\n");
                 }
+                setStatus("Generating draft...", "working");
               } catch (e) {
+                setStatus("Generating draft...", "working");
                 // Silently ignore — conversation history is optional
               }
             }
