@@ -187,7 +187,7 @@
     <div id="command-list"></div>
   </div>
 
-  <div id="version">v1.6</div>
+  <div id="version">v1.7</div>
 
   <div id="draft-section">
     <div id="draft-title">✦ AI Draft Ready</div>
@@ -446,8 +446,9 @@ Agent note: ${agentNote}`;
             // Check if an agent has already sent an outbound email on this ticket
             let isFirstEmail = true;
             if (ticketId) {
+              let convRes;
               try {
-                const convRes = await ZOHODESK.request({
+                convRes = await ZOHODESK.request({
                   url: `https://desk.zoho.eu/api/v1/tickets/${ticketId}/conversations?limit=20&type=email`,
                   type: "GET",
                   headers: { "Content-Type": "application/json" }
@@ -469,7 +470,8 @@ Agent note: ${agentNote}`;
                 setStatus(`threads:${threads.length} out:${hasAgentEmail} first:${isFirstEmail}`, "info");
               } catch (e) {
                 isFirstEmail = true;
-                setStatus(`Conv fetch failed: ${e.message || JSON.stringify(e)} | raw: ${JSON.stringify(convRes).substring(0, 100)}`, "error");
+                const rawDebug = convRes ? JSON.stringify(convRes).substring(0, 150) : "undefined";
+                setStatus(`Conv fetch failed: ${e.message || JSON.stringify(e)} | raw: ${rawDebug}`, "error");
                 await new Promise(r => setTimeout(r, 4000));
               }
             }
