@@ -457,6 +457,8 @@ Agent note: ${agentNote}`;
                 const threads = convData.data || [];
                 const hasAgentEmail = threads.some(t => t.direction === "out");
                 isFirstEmail = !hasAgentEmail;
+                // DEBUG — remove once confirmed working
+                setStatus(`threads:${threads.length} out:${hasAgentEmail} first:${isFirstEmail}`, "info");
               } catch (e) {
                 // If fetch fails, default to including the pleasantry
                 isFirstEmail = true;
