@@ -187,7 +187,7 @@
     <div id="command-list"></div>
   </div>
 
-  <div id="version">v1.7</div>
+  <div id="version">v1.8</div>
 
   <div id="draft-section">
     <div id="draft-title">✦ AI Draft Ready</div>
@@ -256,7 +256,6 @@ Line 4: Based on the context, write an appropriate response that does one or mor
 Keep it concise, friendly and professional.
 Line 5: (empty line)
 Line 6: End with a natural closing sentence that fits the context — either a specific question, a next step, or a note that you will be in touch. Do NOT use "Please let me know if you need anything else" as the closing.
-Line 7: Thanks
 
 Rules: never use em dashes (—), no bullet points, no sign-off name, no "Thanks" sign-off, one draft only.
 
@@ -447,33 +446,16 @@ Agent note: ${agentNote}`;
             // Check if an agent has already sent an outbound email on this ticket
             let isFirstEmail = true;
             if (ticketId) {
-              let convRes;
               try {
-                convRes = await ZOHODESK.request({
-                  url: `https://desk.zoho.eu/api/v1/tickets/${ticketId}/conversations?limit=20&type=email`,
-                  type: "GET",
-                  headers: { "Content-Type": "application/json" }
-                });
-                // ZOHODESK.request returns response differently depending on version
-                let raw;
-                if (typeof convRes === "string") {
-                  raw = convRes;
-                } else if (convRes && convRes.response) {
-                  raw = typeof convRes.response === "string" ? convRes.response : JSON.stringify(convRes.response);
-                } else {
-                  raw = JSON.stringify(convRes);
-                }
-                const convData = JSON.parse(raw);
-                const threads = convData.data || [];
-                const hasAgentEmail = threads.some(t => t.direction === "out");
+                const threadRes = await ZOHODESK.get("ticket.conversations");
+                const threads = threadRes["ticket.conversations"] || [];
+                const hasAgentEmail = threads.some(t => t.direction === "out" || t.channel === "EMAIL" && t.isOutgoing);
                 isFirstEmail = !hasAgentEmail;
-                // DEBUG — remove once confirmed working
                 setStatus(`threads:${threads.length} out:${hasAgentEmail} first:${isFirstEmail}`, "info");
               } catch (e) {
                 isFirstEmail = true;
-                const rawDebug = convRes ? JSON.stringify(convRes).substring(0, 150) : "undefined";
-                setStatus(`Conv fetch failed: ${e.message || JSON.stringify(e)} | raw: ${rawDebug}`, "error");
-                await new Promise(r => setTimeout(r, 4000));
+                setStatus(`Conv fetch failed: ${e.message || JSON.stringify(e)}`, "error");
+                await new Promise(r => setTimeout(r, 3000));
               }
             }
 
