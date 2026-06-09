@@ -209,14 +209,13 @@
         trigger: "fixed",
         label: "/fixed [note] — Generate a resolution email",
         destination: "reply",
-        buildPrompt({ subject, description, agentNote, firstName }) {
+        buildPrompt({ subject, description, agentNote, firstName, isFirstEmail }) {
           const greeting = firstName ? `Hi ${firstName},` : "Hi there,";
+          const wellLine = isFirstEmail ? "\nLine 2: I hope you are well.\nLine 3: (empty line)" : "\nLine 2: (empty line)";
           return `Write a customer-facing email reply body. Output only the email body, nothing else. No subject line, no metadata, no explanation, no multiple drafts.
 
 Follow this exact structure:
-Line 1: ${greeting}
-Line 2: I hope you are well.
-Line 3: (empty line)
+Line 1: ${greeting}${wellLine}
 Line 4: Summarise what was done, covering all actions taken. Be concise but include enough detail that the customer understands exactly what was resolved.
 Line 5: (empty line)
 Line 6: Please let me know if you need anything else,
@@ -234,14 +233,13 @@ Agent note: ${agentNote}`;
         trigger: "r",
         label: "/r [note] — Generate a follow-up or info-request email",
         destination: "reply",
-        buildPrompt({ subject, description, agentNote, firstName }) {
+        buildPrompt({ subject, description, agentNote, firstName, isFirstEmail }) {
           const greeting = firstName ? `Hi ${firstName},` : "Hi there,";
+          const wellLine = isFirstEmail ? "\nLine 2: I hope you are well.\nLine 3: (empty line)" : "\nLine 2: (empty line)";
           return `Write a customer-facing email reply body. Output only the email body, nothing else. No subject line, no metadata, no explanation, no multiple drafts.
 
 Follow this exact structure:
-Line 1: ${greeting}
-Line 2: I hope you are well.
-Line 3: (empty line)
+Line 1: ${greeting}${wellLine}
 Line 4: Based on the context, write an appropriate response that does one or more of the following as needed:
   - Acknowledges the issue the customer has raised
   - Asks the customer for more information or clarification
@@ -436,7 +434,27 @@ Agent note: ${agentNote}`;
             const firstName   = fullName.split(" ")[0]        || "";
             const ticketId    = ticket.id                     || "";
 
-            const context = { subject, description, agentNote, firstName, ticketId };
+            // Check if an agent has already sent an outbound email on this ticket
+            let isFirstEmail = true;
+            if (ticketId) {
+              try {
+                const convRes = await ZOHODESK.request({
+                  url: `https://desk.zoho.eu/api/v1/tickets/${ticketId}/conversations?limit=20&type=email`,
+                  type: "GET",
+                  headers: { "Content-Type": "application/json" }
+                });
+                const raw = typeof convRes === "string" ? convRes : (convRes.response || JSON.stringify(convRes));
+                const convData = JSON.parse(raw);
+                const threads = convData.data || [];
+                const hasAgentEmail = threads.some(t => t.direction === "out");
+                isFirstEmail = !hasAgentEmail;
+              } catch (e) {
+                // If fetch fails, default to including the pleasantry
+                isFirstEmail = true;
+              }
+            }
+
+            const context = { subject, description, agentNote, firstName, ticketId, isFirstEmail };
             const prompt  = command.buildPrompt(context);
             let draft     = await callGemini(prompt);
 
