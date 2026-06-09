@@ -187,7 +187,7 @@
     <div id="command-list"></div>
   </div>
 
-  <div id="version">v1.8</div>
+  <div id="version">v1.9</div>
 
   <div id="draft-section">
     <div id="draft-title">✦ AI Draft Ready</div>
@@ -442,22 +442,7 @@ Agent note: ${agentNote}`;
             const fullName    = ticket.contactName            || "";
             const firstName   = fullName.split(" ")[0]        || "";
             const ticketId    = ticket.id                     || "";
-
-            // Check if an agent has already sent an outbound email on this ticket
-            let isFirstEmail = true;
-            if (ticketId) {
-              try {
-                const threadRes = await ZOHODESK.get("ticket.conversations");
-                const threads = threadRes["ticket.conversations"] || [];
-                const hasAgentEmail = threads.some(t => t.direction === "out" || t.channel === "EMAIL" && t.isOutgoing);
-                isFirstEmail = !hasAgentEmail;
-                setStatus(`threads:${threads.length} out:${hasAgentEmail} first:${isFirstEmail}`, "info");
-              } catch (e) {
-                isFirstEmail = true;
-                setStatus(`Conv fetch failed: ${e.message || JSON.stringify(e)}`, "error");
-                await new Promise(r => setTimeout(r, 3000));
-              }
-            }
+            const isFirstEmail = true; // TODO: implement when REST API auth is resolved
 
             const context = { subject, description, agentNote, firstName, ticketId, isFirstEmail };
             const prompt  = command.buildPrompt(context);
