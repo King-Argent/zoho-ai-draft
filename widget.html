@@ -230,9 +230,9 @@ Agent note: ${agentNote}`;
         }
       },
 
-      reply: {
-        trigger: "reply",
-        label: "/reply [note] — Generate a follow-up or info-request email",
+      r: {
+        trigger: "r",
+        label: "/r [note] — Generate a follow-up or info-request email",
         destination: "reply",
         buildPrompt({ subject, description, agentNote, firstName }) {
           const greeting = firstName ? `Hi ${firstName},` : "Hi there,";
