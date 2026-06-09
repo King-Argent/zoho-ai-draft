@@ -230,16 +230,35 @@ Agent note: ${agentNote}`;
         }
       },
 
+      reply: {
+        trigger: "reply",
+        label: "/reply [note] — Generate a follow-up or info-request email",
+        destination: "reply",
+        buildPrompt({ subject, description, agentNote, firstName }) {
+          const greeting = firstName ? `Hi ${firstName},` : "Hi there,";
+          return `Write a customer-facing email reply body. Output only the email body, nothing else. No subject line, no metadata, no explanation, no multiple drafts.
+
+Follow this exact structure:
+Line 1: ${greeting}
+Line 2: I hope you are well.
+Line 3: (empty line)
+Line 4: Based on the context, write an appropriate response that does one or more of the following as needed:
+  - Acknowledges the issue the customer has raised
+  - Asks the customer for more information or clarification
+  - Lets the customer know you are investigating and will follow up
+Keep it concise, friendly and professional.
+Line 5: (empty line)
+Line 6: End with a natural closing sentence that fits the context — either a specific question, a next step, or a note that you will be in touch. Do NOT use "Please let me know if you need anything else" as the closing.
+
+Rules: never use em dashes (—), no bullet points, no sign-off name, no "Thanks" sign-off, one draft only.
+
+Ticket subject: ${subject}
+Ticket description: ${description}
+Agent note: ${agentNote}`;
+        }
+      },
+
       // ── Add new commands below this line ─────────────────────────────────────
-      // Example structure for next command:
-      // reply: {
-      //   trigger: "reply",
-      //   label: "/reply [note] — Generate a follow-up question email",
-      //   destination: "reply",
-      //   buildPrompt({ subject, description, agentNote, firstName }) {
-      //     return `...your prompt here...`;
-      //   }
-      // },
 
     };
 
@@ -421,8 +440,8 @@ Agent note: ${agentNote}`;
             const prompt  = command.buildPrompt(context);
             let draft     = await callGemini(prompt);
 
-            // Enforce sign-off for reply-type commands
-            if (command.destination === "reply") {
+            // Enforce sign-off for fixed-type commands only
+            if (command.destination === "reply" && command.trigger === "fixed") {
               draft = enforceSignoff(draft);
             }
 
