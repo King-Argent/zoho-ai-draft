@@ -187,7 +187,7 @@
     <div id="command-list"></div>
   </div>
 
-  <div id="version">v1.5</div>
+  <div id="version">v1.6</div>
 
   <div id="draft-section">
     <div id="draft-title">✦ AI Draft Ready</div>
@@ -452,7 +452,15 @@ Agent note: ${agentNote}`;
                   type: "GET",
                   headers: { "Content-Type": "application/json" }
                 });
-                const raw = typeof convRes === "string" ? convRes : (convRes.response || JSON.stringify(convRes));
+                // ZOHODESK.request returns response differently depending on version
+                let raw;
+                if (typeof convRes === "string") {
+                  raw = convRes;
+                } else if (convRes && convRes.response) {
+                  raw = typeof convRes.response === "string" ? convRes.response : JSON.stringify(convRes.response);
+                } else {
+                  raw = JSON.stringify(convRes);
+                }
                 const convData = JSON.parse(raw);
                 const threads = convData.data || [];
                 const hasAgentEmail = threads.some(t => t.direction === "out");
@@ -460,10 +468,9 @@ Agent note: ${agentNote}`;
                 // DEBUG — remove once confirmed working
                 setStatus(`threads:${threads.length} out:${hasAgentEmail} first:${isFirstEmail}`, "info");
               } catch (e) {
-                // If fetch fails, default to including the pleasantry
                 isFirstEmail = true;
-                setStatus(`Conv fetch failed: ${e.message || JSON.stringify(e)}`, "error");
-                await new Promise(r => setTimeout(r, 3000));
+                setStatus(`Conv fetch failed: ${e.message || JSON.stringify(e)} | raw: ${JSON.stringify(convRes).substring(0, 100)}`, "error");
+                await new Promise(r => setTimeout(r, 4000));
               }
             }
 
