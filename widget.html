@@ -187,7 +187,7 @@
     <div id="command-list"></div>
   </div>
 
-  <div id="version">v2.0</div>
+  <div id="version">v2.1</div>
 
   <div id="draft-section">
     <div id="draft-title">✦ AI Draft Ready</div>
@@ -277,11 +277,11 @@ Structure the summary as follows:
 2. Actions taken by the agent(s)
 3. Current status / outcome
 
-Keep it factual, clear and brief. No fluff.
+Only include information that is explicitly present in the data provided. Do not make up or suggest placeholder actions. If information for a section is not available, write "Not available" for that section. Keep it factual, clear and brief.
 
 Ticket subject: ${subject}
 Ticket description: ${description}
-${threadData ? `\nEmail thread and comments:\n${threadData}` : ""}`;
+${threadData ? `\nEmail thread and comments:\n${threadData}` : "\nNo thread data available."}`;
         }
       },
 
@@ -328,7 +328,13 @@ ${threadData ? `\nEmail thread and comments:\n${threadData}` : ""}`;
       currentDestination = destination;
       draftPreview.textContent = text;
       draftTitle.textContent = `✦ /${commandTrigger} — Draft Ready`;
-      sendToReplyBtn.textContent = destination === "reply" ? "Load into Reply Box" : "Post as Private Note";
+      if (destination === "reply") {
+        sendToReplyBtn.textContent = "Load into Reply Box";
+        sendToReplyBtn.style.display = "block";
+      } else {
+        sendToReplyBtn.textContent = "Copy to Clipboard";
+        sendToReplyBtn.style.display = "block";
+      }
       waitingMsg.style.display   = "none";
       draftSection.style.display = "block";
     }
@@ -544,10 +550,10 @@ ${threadData ? `\nEmail thread and comments:\n${threadData}` : ""}`;
           try {
             if (currentDestination === "reply") {
               await loadIntoReplyBox(currentDraft);
+              setStatus("Done ✓", "success");
             } else {
-              const ticketRes = await ZOHODESK.get("ticket");
-              const ticketId  = ticketRes["ticket"]?.id || "";
-              await postPrivateNote(currentDraft, ticketId);
+              await navigator.clipboard.writeText(currentDraft);
+              setStatus("Copied to clipboard ✓ — paste into a private note", "success");
             }
             setStatus("Done ✓", "success");
           } catch(e) {
