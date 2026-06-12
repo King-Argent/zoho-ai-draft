@@ -187,7 +187,7 @@
     <div id="command-list"></div>
   </div>
 
-  <div id="version">v1.9</div>
+  <div id="version">v2.0</div>
 
   <div id="draft-section">
     <div id="draft-title">✦ AI Draft Ready</div>
@@ -262,6 +262,26 @@ Rules: never use em dashes (—), no bullet points, no sign-off name, no "Thanks
 Ticket subject: ${subject}
 Ticket description: ${description}
 Agent note: ${agentNote}`;
+        }
+      },
+
+      sum: {
+        trigger: "sum",
+        label: "/sum — Summarise ticket and post as private note",
+        destination: "note",
+        buildPrompt({ subject, description, agentNote, firstName, threadData }) {
+          return `Write a concise internal summary of this support ticket for the support team. This is a private note, not visible to the customer.
+
+Structure the summary as follows:
+1. What the customer reported
+2. Actions taken by the agent(s)
+3. Current status / outcome
+
+Keep it factual, clear and brief. No fluff.
+
+Ticket subject: ${subject}
+Ticket description: ${description}
+${threadData ? `\nEmail thread and comments:\n${threadData}` : ""}`;
         }
       },
 
@@ -445,11 +465,60 @@ Agent note: ${agentNote}`;
             const isFirstEmail = true; // TODO: implement when REST API auth is resolved
 
             const context = { subject, description, agentNote, firstName, ticketId, isFirstEmail };
+
+            // For /sum, fetch the full thread and comments
+            if (command.trigger === "sum" && ticketId) {
+              setStatus("Fetching ticket history...", "working");
+              let threadData = "";
+              try {
+                // Fetch emails/threads
+                const convRes = await ZOHODESK.request({
+                  url: `https://desk.zoho.eu/api/v1/tickets/${ticketId}/conversations?limit=20`,
+                  type: "GET",
+                  headers: { "Content-Type": "application/json" }
+                });
+                const raw = typeof convRes === "string" ? convRes : (convRes.response || JSON.stringify(convRes));
+                const convData = JSON.parse(raw);
+                const threads = convData.data || [];
+                if (threads.length > 0) {
+                  threadData += threads.map(t => {
+                    const tmp2 = document.createElement("div");
+                    tmp2.innerHTML = t.content || t.body || "";
+                    const text = (tmp2.textContent || tmp2.innerText || "").trim().substring(0, 800);
+                    const direction = t.direction === "in" ? "Customer" : "Agent";
+                    return `[${direction} email]: ${text}`;
+                  }).join("\n\n");
+                }
+              } catch(e) { /* silently continue without thread data */ }
+
+              try {
+                // Fetch comments/notes
+                const commRes = await ZOHODESK.request({
+                  url: `https://desk.zoho.eu/api/v1/tickets/${ticketId}/comments?limit=20`,
+                  type: "GET",
+                  headers: { "Content-Type": "application/json" }
+                });
+                const raw2 = typeof commRes === "string" ? commRes : (commRes.response || JSON.stringify(commRes));
+                const commData = JSON.parse(raw2);
+                const comments = commData.data || [];
+                if (comments.length > 0) {
+                  const commentText = comments.map(c => {
+                    const tmp3 = document.createElement("div");
+                    tmp3.innerHTML = c.content || "";
+                    const text = (tmp3.textContent || tmp3.innerText || "").trim().substring(0, 400);
+                    return `[Agent comment]: ${text}`;
+                  }).join("\n\n");
+                  threadData += (threadData ? "\n\n" : "") + commentText;
+                }
+              } catch(e) { /* silently continue without comment data */ }
+
+              context.threadData = threadData;
+            }
             const prompt  = command.buildPrompt(context);
             let draft     = await callGemini(prompt);
 
-            // Enforce sign-off for fixed-type commands only
-            if (command.destination === "reply" && command.trigger === "fixed") {
+            // Enforce sign-off for fixed command only
+            if (command.trigger === "fixed") {
               draft = enforceSignoff(draft);
             }
 
